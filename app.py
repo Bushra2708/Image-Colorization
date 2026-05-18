@@ -12,6 +12,7 @@ os.environ["TF_NUM_INTEROP_THREADS"] = "1"
 import cv2
 import numpy as np
 import base64
+import gc
 from flask import Flask, render_template, request
 import tensorflow as tf
 tf.config.threading.set_inter_op_parallelism_threads(1)
@@ -110,8 +111,12 @@ def predict():
         
         L_input = (L_resized / 100.0).reshape(1, IMG_SIZE, IMG_SIZE, 1)
 
-        pred_AB = model.predict(L_input, verbose=0)[0]
+        # Use direct model calling instead of model.predict() to avoid massive memory spikes
+        pred_AB = model(L_input, training=False).numpy()[0]
         pred_AB = pred_AB * 128
+        
+        del L_input
+        gc.collect()
 
         # -------------------------------------------------
         # UPSACLE COLOR & COMBINE WITH HIGH-RES L
