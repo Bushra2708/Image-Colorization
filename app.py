@@ -3,10 +3,19 @@
 # =========================================================
 
 import os
+
+# Limit threads to save memory on Render's free tier
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["TF_NUM_INTRAOP_THREADS"] = "1"
+os.environ["TF_NUM_INTEROP_THREADS"] = "1"
+
 import cv2
 import numpy as np
 import base64
 from flask import Flask, render_template, request
+import tensorflow as tf
+tf.config.threading.set_inter_op_parallelism_threads(1)
+tf.config.threading.set_intra_op_parallelism_threads(1)
 from tensorflow.keras.models import load_model
 
 # =========================================================
