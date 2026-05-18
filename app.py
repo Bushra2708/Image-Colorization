@@ -37,7 +37,7 @@ app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 
 MODEL_PATH = "models/best_colorization_model.keras"
 print("Loading model globally...")
-model = load_model(MODEL_PATH)
+model = load_model(MODEL_PATH, compile=False)
 print("Model loaded successfully!")
 
 # =========================================================
