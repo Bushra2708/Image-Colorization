@@ -1,549 +1,349 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>AI Image Colorization</title>
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
-
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-
-        *{
-            margin:0;
-            padding:0;
-            box-sizing:border-box;
-            font-family:'Poppins', sans-serif;
+        :root {
+            --bg-color: #0b0f19;
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --secondary: #ec4899;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --border-color: rgba(255, 255, 255, 0.1);
         }
 
-        body{
-
-            min-height:100vh;
-
-            background:#000000;
-
-            display:flex;
-
-            justify-content:center;
-
-            align-items:center;
-
-            padding:30px;
-
-            overflow-x:hidden;
-
-            position:relative;
-
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
         }
 
-        /* LEFT PINK NEON */
-
-        body::before{
-
-            content:"";
-
-            position:absolute;
-
-            left:70px;
-
-            top:70px;
-
-            width:320px;
-
-            height:320px;
-
-            border-left:5px solid #ff00ff;
-
-            border-top:5px solid #ff00ff;
-
-            box-shadow:
-            0 0 15px #ff00ff,
-            0 0 30px #ff00ff,
-            0 0 60px #ff00ff;
-
-            border-radius:6px;
-
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+            position: relative;
+            overflow-x: hidden;
         }
 
-        /* RIGHT BLUE NEON */
-
-        body::after{
-
-            content:"";
-
-            position:absolute;
-
-            right:70px;
-
-            bottom:70px;
-
-            width:320px;
-
-            height:320px;
-
-            border-right:5px solid #00aaff;
-
-            border-bottom:5px solid #00aaff;
-
-            box-shadow:
-            0 0 15px #00aaff,
-            0 0 30px #00aaff,
-            0 0 60px #00aaff;
-
-            border-radius:6px;
-
+        /* Ambient Background Glows */
+        .ambient-glow1 {
+            position: fixed;
+            top: -10%;
+            left: -10%;
+            width: 50vw;
+            height: 50vw;
+            background: radial-gradient(circle, rgba(99,102,241,0.15) 0%, rgba(11,15,25,0) 70%);
+            z-index: -1;
+            pointer-events: none;
         }
 
-        .container{
-
-            width:100%;
-
-            max-width:1200px;
-
-            background:rgba(10,10,10,0.82);
-
-            backdrop-filter:blur(18px);
-
-            border:1px solid rgba(255,255,255,0.08);
-
-            border-radius:30px;
-
-            padding:45px;
-
-            position:relative;
-
-            z-index:10;
-
-            box-shadow:
-            0 0 25px rgba(255,255,255,0.04);
-
+        .ambient-glow2 {
+            position: fixed;
+            bottom: -10%;
+            right: -10%;
+            width: 50vw;
+            height: 50vw;
+            background: radial-gradient(circle, rgba(236,72,153,0.15) 0%, rgba(11,15,25,0) 70%);
+            z-index: -1;
+            pointer-events: none;
         }
 
-        .title{
-
-            text-align:center;
-
-            font-size:50px;
-
-            font-weight:700;
-
-            margin-bottom:12px;
-
-            color:white;
-
-            letter-spacing:1px;
-
-            text-shadow:
-            0 0 10px #ff00ff,
-            0 0 20px #7b2cff,
-            0 0 35px #00aaff;
-
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 50px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            z-index: 10;
         }
 
-        .subtitle{
-
-            text-align:center;
-
-            color:#d1d5db;
-
-            margin-bottom:40px;
-
-            font-size:17px;
-
-            line-height:1.7;
-
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
         }
 
-        .upload-card{
-
-            background:rgba(255,255,255,0.03);
-
-            border:1px solid rgba(255,255,255,0.08);
-
-            padding:35px;
-
-            border-radius:22px;
-
-            text-align:center;
-
-            box-shadow:
-            inset 0px 0px 20px rgba(255,255,255,0.02);
-
+        .title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            background: linear-gradient(to right, #a5b4fc, #fbcfe8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
         }
 
-        .file-input{
-
-            width:100%;
-
-            padding:18px;
-
-            border-radius:15px;
-
-            border:2px dashed rgba(255,255,255,0.18);
-
-            background:rgba(255,255,255,0.03);
-
-            color:white;
-
-            margin-bottom:28px;
-
-            cursor:pointer;
-
-            transition:0.3s;
-
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
         }
 
-        .file-input:hover{
-
-            border-color:#00aaff;
-
-            box-shadow:
-            0 0 20px rgba(0,170,255,0.25);
-
+        .upload-section {
+            background: rgba(15, 23, 42, 0.6);
+            border: 2px dashed rgba(99, 102, 241, 0.3);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
         }
 
-        .file-input::file-selector-button{
-
-            background:linear-gradient(
-                135deg,
-                #ff00ff,
-                #7b2cff,
-                #00aaff
-            );
-
-            border:none;
-
-            color:white;
-
-            padding:12px 20px;
-
-            border-radius:10px;
-
-            margin-right:15px;
-
-            cursor:pointer;
-
-            font-weight:600;
-
-            transition:0.3s;
-
-            box-shadow:
-            0 0 12px #ff00ff,
-            0 0 25px #00aaff;
-
+        .upload-section:hover {
+            border-color: var(--primary);
+            background: rgba(15, 23, 42, 0.8);
         }
 
-        .file-input::file-selector-button:hover{
-
-            transform:scale(1.05);
-
-            box-shadow:
-            0 0 20px #ff00ff,
-            0 0 40px #00aaff;
-
+        .file-input-wrapper {
+            position: relative;
+            margin-bottom: 25px;
         }
 
-        .btn{
-
-            background:linear-gradient(
-                135deg,
-                #ff00ff,
-                #7b2cff,
-                #00aaff
-            );
-
-            border:none;
-
-            color:white;
-
-            padding:16px 42px;
-
-            border-radius:14px;
-
-            font-size:17px;
-
-            font-weight:600;
-
-            cursor:pointer;
-
-            transition:0.35s ease;
-
-            letter-spacing:0.5px;
-
-            box-shadow:
-            0 0 12px #ff00ff,
-            0 0 25px #7b2cff,
-            0 0 45px #00aaff;
-
+        .file-input {
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            cursor: pointer;
+            transition: 0.3s;
         }
 
-        .btn:hover{
-
-            transform:translateY(-3px) scale(1.04);
-
-            box-shadow:
-            0 0 20px #ff00ff,
-            0 0 40px #7b2cff,
-            0 0 70px #00aaff;
-
+        .file-input::file-selector-button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin-right: 15px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: 0.3s;
         }
 
-        .result-section{
-
-            margin-top:50px;
-
+        .file-input::file-selector-button:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
         }
 
-        .result-title{
-
-            text-align:center;
-
-            color:white;
-
-            font-size:32px;
-
-            margin-bottom:35px;
-
-            text-shadow:
-            0 0 10px #ff00ff,
-            0 0 20px #00aaff;
-
+        .btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 20px -10px rgba(99, 102, 241, 0.5);
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .image-grid{
-
-            display:grid;
-
-            grid-template-columns:
-            repeat(auto-fit, minmax(320px,1fr));
-
-            gap:35px;
-
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 25px -10px rgba(99, 102, 241, 0.7);
         }
 
-        .image-card{
-
-            background:rgba(255,255,255,0.03);
-
-            border:1px solid rgba(255,255,255,0.08);
-
-            border-radius:24px;
-
-            padding:22px;
-
-            box-shadow:
-            0 0 18px rgba(0,170,255,0.12);
-
-            transition:0.3s;
-
+        /* Loading Spinner */
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
         }
 
-        .image-card:hover{
-
-            transform:translateY(-5px);
-
-            box-shadow:
-            0 0 25px rgba(255,0,255,0.2),
-            0 0 45px rgba(0,170,255,0.18);
-
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
-        .image-card h3{
-
-            text-align:center;
-
-            color:white;
-
-            margin-bottom:20px;
-
-            font-size:22px;
-
-            font-weight:600;
-
+        .btn.loading .spinner {
+            display: inline-block;
         }
 
-        .image-wrapper{
-
-            width:100%;
-
-            aspect-ratio:1/1;
-
-            overflow:hidden;
-
-            border-radius:18px;
-
-            background:#050505;
-
-            border:1px solid rgba(255,255,255,0.08);
-
-            display:flex;
-
-            justify-content:center;
-
-            align-items:center;
-
+        .btn.loading .btn-text {
+            display: none;
         }
 
-        .image-wrapper img{
-
-            width:100%;
-
-            height:100%;
-
-            object-fit:cover;
-
-            border-radius:18px;
-
-            transition:0.3s;
-
+        .btn.loading {
+            pointer-events: none;
+            opacity: 0.8;
         }
 
-        .image-wrapper img:hover{
-
-            transform:scale(1.03);
-
+        .result-section {
+            margin-top: 60px;
+            animation: fadeIn 0.8s ease-out;
         }
 
-        .footer-text{
-
-            text-align:center;
-
-            margin-top:40px;
-
-            color:#9ca3af;
-
-            font-size:14px;
-
-            letter-spacing:0.5px;
-
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        @media(max-width:768px){
+        .result-title {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
 
-            body::before,
-            body::after{
+        .image-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
 
-                width:180px;
-                height:180px;
+        .image-card {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
 
+        .image-card h3 {
+            font-size: 1.2rem;
+            color: var(--text-main);
+            text-align: center;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .image-wrapper {
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .image-wrapper img {
+            width: 100%;
+            height: auto;
+            max-height: 450px;
+            object-fit: contain;
+            transition: transform 0.5s ease;
+        }
+
+        .image-wrapper:hover img {
+            transform: scale(1.02);
+        }
+
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .image-grid {
+                grid-template-columns: 1fr;
             }
-
-            .container{
-                padding:28px;
+            .container {
+                padding: 30px 20px;
             }
-
-            .title{
-                font-size:36px;
+            .title {
+                font-size: 2.2rem;
             }
-
-            .subtitle{
-                font-size:15px;
-            }
-
-            .image-grid{
-                grid-template-columns:1fr;
-            }
-
         }
-
     </style>
-
 </head>
-
 <body>
+    <div class="ambient-glow1"></div>
+    <div class="ambient-glow2"></div>
 
     <div class="container">
+        <div class="header">
+            <h1 class="title">AI Image Colorization</h1>
+            <p class="subtitle">Bring old black & white photos to life using state-of-the-art Deep Learning. Upload an image to see the magic.</p>
+        </div>
 
-        <h1 class="title">
-            AI Image Colorization
-        </h1>
-
-        <p class="subtitle">
-            Transform grayscale photographs into realistic colorized images using Deep Learning and Computer Vision.
-        </p>
-
-        <div class="upload-card">
-
-            <form action="/predict" method="POST" enctype="multipart/form-data">
-
-                <input
-                    type="file"
-                    name="image"
-                    class="file-input"
-                    accept="image/*"
-                    required
-                >
-
-                <br>
-
-                <button type="submit" class="btn">
-                    Colorize Image
+        <div class="upload-section">
+            <form action="/predict" method="POST" enctype="multipart/form-data" id="uploadForm">
+                <div class="file-input-wrapper">
+                    <input type="file" name="image" class="file-input" accept="image/*" required id="fileInput">
+                </div>
+                <button type="submit" class="btn" id="submitBtn">
+                    <span class="btn-text">Colorize Image</span>
+                    <span class="spinner"></span>
                 </button>
-
             </form>
-
         </div>
 
         {% if uploaded_image and output_image %}
-
-        <div class="result-section">
-
-            <h2 class="result-title">
-                Prediction Results
-            </h2>
-
+        <div class="result-section" id="resultSection">
+            <h2 class="result-title">Result</h2>
             <div class="image-grid">
-
                 <div class="image-card">
-
-                    <h3>Uploaded Image</h3>
-
+                    <h3>Original</h3>
                     <div class="image-wrapper">
-
-                        <img
-                            src="{{ uploaded_image }}"
-                            alt="Uploaded Image"
-                        >
-
+                        <img src="{{ uploaded_image }}" alt="Original Grayscale Image">
                     </div>
-
                 </div>
-
                 <div class="image-card">
-
-                    <h3>Colorized Output</h3>
-
+                    <h3>Colorized</h3>
                     <div class="image-wrapper">
-
-                        <img
-                            src="{{ output_image }}"
-                            alt="Colorized Output"
-                        >
-
+                        <img src="{{ output_image }}" alt="AI Colorized Image">
                     </div>
-
                 </div>
-
             </div>
-
         </div>
-
         {% endif %}
 
-        <p class="footer-text">
-            Built with Flask, TensorFlow, OpenCV & Deep Learning
-        </p>
-
+        <div class="footer">
+            Powered by Flask, TensorFlow & Deep Learning
+        </div>
     </div>
 
-</body>
+    <script>
+        const form = document.getElementById('uploadForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const fileInput = document.getElementById('fileInput');
 
+        form.addEventListener('submit', (e) => {
+            if (fileInput.files.length > 0) {
+                // Show loading state
+                submitBtn.classList.add('loading');
+                
+                // Blur out previous results while loading to indicate background work
+                const results = document.getElementById('resultSection');
+                if(results) {
+                    results.style.opacity = '0.5';
+                    results.style.pointerEvents = 'none';
+                    results.style.transition = 'opacity 0.3s ease';
+                }
+            }
+        });
+    </script>
+</body>
 </html>
