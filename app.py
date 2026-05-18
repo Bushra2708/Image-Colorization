@@ -17,6 +17,12 @@ from tensorflow.keras.models import load_model
 app = Flask(__name__)
 
 # =========================================================
+# LIMIT FILE SIZE (5 MB)
+# =========================================================
+
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
+
+# =========================================================
 # FOLDERS
 # =========================================================
 
@@ -40,6 +46,7 @@ IMG_SIZE = 128
 
 @app.route("/")
 def home():
+
     return render_template("index.html")
 
 # =========================================================
@@ -49,116 +56,218 @@ def home():
 @app.route("/predict", methods=["POST"])
 def predict():
 
-    if "image" not in request.files:
-        return "No file uploaded"
+    try:
 
-    file = request.files["image"]
+        # -------------------------------------------------
+        # CHECK FILE
+        # -------------------------------------------------
 
-    if file.filename == "":
-        return "No selected file"
+        if "image" not in request.files:
+            return "No file uploaded"
 
-    # -----------------------------------------------------
-    # SAVE UPLOADED IMAGE
-    # -----------------------------------------------------
+        file = request.files["image"]
 
-    upload_path = os.path.join(
-        UPLOAD_FOLDER,
-        file.filename
-    )
+        if file.filename == "":
+            return "No selected file"
 
-    file.save(upload_path)
+        # -------------------------------------------------
+        # SAVE UPLOADED IMAGE
+        # -------------------------------------------------
 
-    # -----------------------------------------------------
-    # READ IMAGE
-    # -----------------------------------------------------
+        upload_path = os.path.join(
+            UPLOAD_FOLDER,
+            file.filename
+        )
 
-    img = cv2.imread(upload_path)
+        file.save(upload_path)
 
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        # -------------------------------------------------
+        # READ IMAGE
+        # -------------------------------------------------
 
-    # Resize for model
-    resized_img = cv2.resize(img_rgb, (IMG_SIZE, IMG_SIZE))
+        img = cv2.imread(upload_path)
 
-    # -----------------------------------------------------
-    # RGB -> LAB
-    # -----------------------------------------------------
+        if img is None:
+            return "Invalid image uploaded"
 
-    lab = cv2.cvtColor(
-        resized_img.astype(np.float32) / 255.0,
-        cv2.COLOR_RGB2LAB
-    )
+        # -------------------------------------------------
+        # SAVE ORIGINAL SIZE
+        # -------------------------------------------------
 
-    # Extract L channel
-    L = lab[:, :, 0]
+        original_h, original_w = img.shape[:2]
 
-    # Normalize
-    L_input = L / 100.0
+        # -------------------------------------------------
+        # RESIZE LARGE IMAGES
+        # -------------------------------------------------
 
-    # Reshape
-    L_input = L_input.reshape(1, IMG_SIZE, IMG_SIZE, 1)
+        MAX_DIM = 600
 
-    # -----------------------------------------------------
-    # PREDICT AB CHANNELS
-    # -----------------------------------------------------
+        if max(original_h, original_w) > MAX_DIM:
 
-    pred_AB = model.predict(L_input, verbose=0)[0]
+            scale = MAX_DIM / max(original_h, original_w)
 
-    # Denormalize
-    pred_AB = pred_AB * 128
+            new_w = int(original_w * scale)
+            new_h = int(original_h * scale)
 
-    # -----------------------------------------------------
-    # RECONSTRUCT LAB IMAGE
-    # -----------------------------------------------------
+            img = cv2.resize(
+                img,
+                (new_w, new_h)
+            )
 
-    colorized_lab = np.zeros((IMG_SIZE, IMG_SIZE, 3))
+        # -------------------------------------------------
+        # BGR -> RGB
+        # -------------------------------------------------
 
-    colorized_lab[:, :, 0] = L
-    colorized_lab[:, :, 1:] = pred_AB
+        img_rgb = cv2.cvtColor(
+            img,
+            cv2.COLOR_BGR2RGB
+        )
 
-    # LAB -> RGB
-    colorized_rgb = cv2.cvtColor(
-        colorized_lab.astype(np.float32),
-        cv2.COLOR_LAB2RGB
-    )
+        # -------------------------------------------------
+        # RESIZE FOR MODEL
+        # -------------------------------------------------
 
-    # Clip values
-    colorized_rgb = np.clip(colorized_rgb, 0, 1)
+        resized_img = cv2.resize(
+            img_rgb,
+            (IMG_SIZE, IMG_SIZE)
+        )
 
-    # Convert to uint8
-    output_img = (colorized_rgb * 255).astype(np.uint8)
+        # -------------------------------------------------
+        # RGB -> LAB
+        # -------------------------------------------------
 
-    # RGB -> BGR
-    output_img = cv2.cvtColor(output_img, cv2.COLOR_RGB2BGR)
+        lab = cv2.cvtColor(
+            resized_img.astype(np.float32) / 255.0,
+            cv2.COLOR_RGB2LAB
+        )
 
-    # Ensure same size
-    output_img = cv2.resize(output_img, (128, 128))
+        # -------------------------------------------------
+        # EXTRACT L CHANNEL
+        # -------------------------------------------------
 
-    # -----------------------------------------------------
-    # SAVE OUTPUT IMAGE
-    # -----------------------------------------------------
+        L = lab[:, :, 0]
 
-    output_filename = "output_" + file.filename
+        # Normalize
+        L_input = L / 100.0
 
-    output_path = os.path.join(
-        OUTPUT_FOLDER,
-        output_filename
-    )
+        # Reshape
+        L_input = L_input.reshape(
+            1,
+            IMG_SIZE,
+            IMG_SIZE,
+            1
+        )
 
-    cv2.imwrite(output_path, output_img)
+        # -------------------------------------------------
+        # MODEL PREDICTION
+        # -------------------------------------------------
 
-    # -----------------------------------------------------
-    # RETURN RESULT
-    # -----------------------------------------------------
+        pred_AB = model.predict(
+            L_input,
+            verbose=0
+        )[0]
 
-    return render_template(
-        "index.html",
-        uploaded_image=upload_path,
-        output_image=output_path
-    )
+        # Denormalize
+        pred_AB = pred_AB * 128
+
+        # -------------------------------------------------
+        # RECONSTRUCT LAB IMAGE
+        # -------------------------------------------------
+
+        colorized_lab = np.zeros(
+            (IMG_SIZE, IMG_SIZE, 3)
+        )
+
+        colorized_lab[:, :, 0] = L
+        colorized_lab[:, :, 1:] = pred_AB
+
+        # -------------------------------------------------
+        # LAB -> RGB
+        # -------------------------------------------------
+
+        colorized_rgb = cv2.cvtColor(
+            colorized_lab.astype(np.float32),
+            cv2.COLOR_LAB2RGB
+        )
+
+        # Clip values
+        colorized_rgb = np.clip(
+            colorized_rgb,
+            0,
+            1
+        )
+
+        # -------------------------------------------------
+        # CONVERT TO UINT8
+        # -------------------------------------------------
+
+        output_img = (
+            colorized_rgb * 255
+        ).astype(np.uint8)
+
+        # RGB -> BGR
+        output_img = cv2.cvtColor(
+            output_img,
+            cv2.COLOR_RGB2BGR
+        )
+
+        # -------------------------------------------------
+        # RESIZE OUTPUT BACK
+        # -------------------------------------------------
+
+        output_img = cv2.resize(
+            output_img,
+            (original_w, original_h)
+        )
+
+        # -------------------------------------------------
+        # SAVE OUTPUT IMAGE
+        # -------------------------------------------------
+
+        output_filename = (
+            "output_" + file.filename
+        )
+
+        output_path = os.path.join(
+            OUTPUT_FOLDER,
+            output_filename
+        )
+
+        cv2.imwrite(
+            output_path,
+            output_img
+        )
+
+        # -------------------------------------------------
+        # RETURN RESULT
+        # -------------------------------------------------
+
+        return render_template(
+            "index.html",
+            uploaded_image=upload_path,
+            output_image=output_path
+        )
+
+    # =====================================================
+    # ERROR HANDLING
+    # =====================================================
+
+    except Exception as e:
+
+        return f"""
+        <h2 style='color:red; text-align:center; margin-top:50px;'>
+            Error Occurred
+        </h2>
+
+        <p style='text-align:center; color:white;'>
+            {str(e)}
+        </p>
+        """
 
 # =========================================================
 # MAIN
 # =========================================================
 
 if __name__ == "__main__":
+
     app.run(debug=True)
